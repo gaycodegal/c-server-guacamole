@@ -1,0 +1,17 @@
+TESTING my_strcmp
+"" ?= "my dog is fine" -> -1
+"my dog is fine" ?= "" -> 1
+"my do" ?= "aasdf" -> 1
+"aasdf" ?= "my do" -> -1
+"my dog is find" ?= "my dog is fine" -> -1
+"my dog is fine" ?= "my dog is find" -> 1
+"ny dog is fine" ?= "my dog is fine" -> 1
+"my dog is fine" ?= "ny dog is fine" -> -1
+(null) ?= (null) -> 0
+(null) ?= "CAsdfsAFDasdf" -> -1
+"CAsdfsAFDasdf" ?= (null) -> 1
+"my dog is fine" ?= "my dog is fine" -> 0
+"" ?= "" -> 0
+"a" ?= "a" -> 0
+"b" ?= "a" -> 1
+"a" ?= "b" -> -1

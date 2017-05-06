@@ -1,0 +1,17 @@
+TESTING my_strnconcat
+"" + "" 2 = ""
+"a" + "" 2 = "a"
+"" + "a" 3 = "a"
+"a" + "b" 3 = "ab"
+"b" + "a" 2 = "ba"
+"ac" + "b" 1 = "acb"
+"b" + "ac" 3 = "bac"
+"ac" + "bc" 2 = "acbc"
+"bc" + "ac" 2 = "bcac"
+(null) + "a" 1 = "a"
+"b" + (null) 1 = "b"
+(null) + (null) 1 = (null)
+"" + "aaa" 1 = "a"
+"" + "aaa" 2 = "aa"
+"" + "aaa" 0 = ""
+"" + "aaa" -1 = ""

@@ -1,0 +1,22 @@
+TESTING my_strncpy
+"" over "NON" is ""
+"a" over "NON" is "a"
+"ab" over "NON" is "ab"
+"abc" over "NON" is "ab"
+(null) over "not replaced" is "not replaced"
+"abc" over (null) is (null)
+(null) over (null) is (null)
+"" over "NON" is ""
+"a" over "NON" is "a"
+"ab" over "NON" is "ab"
+"abc" over "NON" is "abc"
+(null) over "not replaced" is "not replaced"
+"abc" over (null) is (null)
+(null) over (null) is (null)
+"" over "NON" is ""
+"a" over "NON" is "a"
+"ab" over "NON" is "ab"
+"abc" over "NON" is "abc"
+(null) over "not replaced" is "not replaced"
+"abc" over (null) is (null)
+(null) over (null) is (null)

@@ -1,0 +1,14 @@
+TESTING my_strfind
+"my dog is fine" 'O' -> (null)
+"my dog is fine" 'o' -> "og is fine"
+"" '2' -> (null)
+"my dog is fin" 'n' -> "n"
+"my dog is fine" 'e' -> "e"
+"my dog is fin" 'm' -> "my dog is fin"
+"my dog is fine" 'm' -> "my dog is fine"
+"my dog m fine" 'm' -> "my dog m fine"
+"mmy dog m fine" 'm' -> "mmy dog m fine"
+(null) 'A' -> (null)
+"CAsdfsAFDasdf" 'C' -> "CAsdfsAFDasdf"
+"a" 'a' -> "a"
+"my dog is fine" '_' -> ""

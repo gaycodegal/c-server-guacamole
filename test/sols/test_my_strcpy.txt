@@ -1,0 +1,8 @@
+TESTING my_strcpy
+"" over "NON" is ""
+"a" over "NON" is "a"
+"ab" over "NON" is "ab"
+"abc" over "NON" is "abc"
+(null) over "not replaced" is "not replaced"
+"abc" over (null) is (null)
+(null) over (null) is (null)

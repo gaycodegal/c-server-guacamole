@@ -1,0 +1,13 @@
+TESTING my_strcat
+"" + "" = ""
+"a" + "" = "a"
+"" + "a" = "a"
+"a" + "b" = "ab"
+"b" + "a" = "ba"
+"ac" + "b" = "acb"
+"b" + "ac" = "bac"
+"ac" + "bc" = "acbc"
+"bc" + "ac" = "bcac"
+(null) + "a" = (null)
+"b" + (null) = "b"
+(null) + (null) = (null)

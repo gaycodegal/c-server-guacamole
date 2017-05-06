@@ -1,0 +1,6 @@
+Tests my_strlen
+"my dog is fine" -> 14
+"" -> 0
+(null) -> -1
+"CAsdfsAFDasdf" -> 13
+"a" -> 1

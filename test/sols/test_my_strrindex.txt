@@ -1,0 +1,14 @@
+TESTING my_strrindex
+"my dog is fine" 'O' -> -1
+"my dog is fine" 'o' -> 4
+"" '2' -> -1
+"my dog is fin" 'n' -> 12
+"my dog is fine" 'e' -> 13
+"my dog is fin" 'm' -> 0
+"my dog is fine" 'm' -> 0
+"my dog m fine" 'm' -> 7
+"my dog mm fine" 'm' -> 8
+(null) 'A' -> -1
+"CAsdfsAFDasdf" 'C' -> 0
+"a" 'a' -> 0
+"my dog is fine" '_' -> 14

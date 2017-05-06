@@ -1,0 +1,19 @@
+Hello World!
+
+-2147483648
+-1
+2147483647
+0
+a
+ab
+abc
+ABCDEFGHIJKLMNOPQRSTUVWXYZ
+1
+0
+-1
+2
+3
+1
+2
+3
+-1
