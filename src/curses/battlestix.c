@@ -234,8 +234,45 @@ int writePrompt(int key){
   return 0;
 }
 
+void PROMPT_DISPLAY(char * message){
+  PROMPT.message = message;
+  PROMPT.begin = message;
+  writePrompt(0);  
+}
+
 void pushMessage(MessageSegment * message){
   add_elem((void*)message, display_queue);
+}
+
+MessageSegment * newMessageSegment(int paginate, char * text){
+  MessageSegment * message = (MessageSegment *)malloc(sizeof(MessageSegment));
+  message->paginate = paginate;
+  my_strncpy(message->contents, text, SEGMENT_SIZE - 1);
+  return message;
+}
+
+MessageSegment * newMessageSegment2(int paginate, char * text, int seg){
+  MessageSegment * message = (MessageSegment *)malloc(sizeof(MessageSegment));
+  message->paginate = paginate;
+  my_strncpy(message->contents, text, seg);
+  return message;
+}
+
+
+void recieveMessage(char * text){
+  int len = my_strlen(text);
+  char * p;
+  int paginate = 1;
+  int moveBy = SEGMENT_SIZE - 1;
+  
+  for(p = text + len - moveBy; p >= text; p -= moveBy){
+    pushMessage(newMessageSegment(paginate, p));
+    paginate = 0;
+    PROMPT_DISPLAY(p);
+  }
+  len = moveBy - (text - p);
+  if(len != 0)
+    pushMessage(newMessageSegment2(paginate, text, len));
 }
 
 int main(int argc, char ** argv){  
@@ -244,13 +281,22 @@ int main(int argc, char ** argv){
   int c = 10;
   mapping fallback = &fallbackfn;
   mapping chosen = fallback;
-  MessageSegment welcome_message, welcome_message_2;
-  welcome_message.paginate = 0;
-  welcome_message_2.paginate = 0;
-  my_strcpy(welcome_message.contents, "hi friend!");
-  pushMessage(&welcome_message);
-  my_strcpy(welcome_message_2.contents, "I'm steph!");
-  pushMessage(&welcome_message_2);
+
+  recieveMessage("*");
+  recieveMessage("*");
+  recieveMessage("On the road to Shambala");
+  recieveMessage("Everyone is lucky, everyone is so kind");
+  recieveMessage("On the road to Shambala");
+  recieveMessage("Everyone is helpful, everyone is kind");
+  
+  recieveMessage("With the rain in Shambala");
+  recieveMessage("Wash away my sorrow, wash away my shame");
+  recieveMessage("With the rain in Shambala");
+  recieveMessage("Wash away my troubles, wash away my pain");
+
+
+
+
   fallback(1);
   /*  struct _win_st *win;*/
   arrs[4] = 0;
