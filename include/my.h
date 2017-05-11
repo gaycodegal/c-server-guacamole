@@ -25,7 +25,7 @@ char *my_strrfind(char*, char);
 int my_strcmp(const char*, const char*);
 int my_strncmp(const char*, const char*, int);
 int my_strkcmp(const char*, const char*, int);
-char *my_strcpy(char*, const char*);
+char *my_strcpy(char*dst, const char*src);
 char *my_strncpy(char*, const char*, int); 
 char *my_strcat(char*, const char*); 
 char *my_strdup(const char*); 
