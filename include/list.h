@@ -11,6 +11,7 @@
   ~~~~/test/testlist.c     your test code
 */
 
+
 struct s_node {
   void* elem;
   struct s_node* next;
@@ -83,6 +84,13 @@ int count_s_nodes(struct s_node* head);
   this assignment)
 */
 void empty_list(struct s_node** head);
+
+/*
+  maps in place over the list
+  starts at head and goes to end.
+  replaces the elems in this list with the returned value;
+*/
+void static_map_list(struct s_node* head, void* (* map_fn)(void * elem));
 
 /*
   Returns a pointer to the node at index n or the last node.

@@ -9,6 +9,7 @@
 #define NUM_SAVED_SEGMENTS 5
 
 typedef int (* mapping)(int key);
+
 typedef struct s_node Node;
 typedef struct s_prompt{
   char * message;
@@ -29,15 +30,15 @@ short colors_inverse = 1, colors_custom = 2;
 int BOX_HEIGHT = 3, DISPLAY_HEIGHT;
 Prompt PROMPT;
 int writePrompt(int);
-Node * __DONT_TOUCH_1__ = NULL;
 Node * __DONT_TOUCH_2__ = NULL;
-Node ** box_queue = &__DONT_TOUCH_1__;
 Node ** display_queue = &__DONT_TOUCH_2__;
 int cursorx, cursory;
 void PROMPT_DISPLAY(char * message);
 void redraw();
 int resize(int key);
 int shiftLeft();
+void recieveMessage(char * text);
+
 void resetCursor(){
   cursory = MAX_Y - BOX_HEIGHT;
   cursorx = 0;
@@ -159,6 +160,7 @@ int fallbackfn(int key){
 }
 
 int enterfn(int key){
+  recieveMessage(buffer);
   buffer[0] = 0;
   bufptr = buffer;
   lastbuf = buffer + 1;
@@ -400,6 +402,11 @@ void recieveMessage(char * text){
     pushMessage(newMessageSegment2(paginate, text, len));
 }
 
+void * freeAThing(void * elem){
+  free(elem);
+  return NULL;
+}
+
 int main(int argc, char ** argv){  
   int x = 0, i;
   int arrs[5];
@@ -496,6 +503,8 @@ int main(int argc, char ** argv){
   echo();
   endwin();
   printf("%i %i %i %i\n", arrs[0], arrs[1], arrs[2], arrs[3]);
+  static_map_list(*display_queue, freeAThing);
+  empty_list(display_queue);
   return 0;
 }
 
