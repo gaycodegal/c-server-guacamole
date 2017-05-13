@@ -4,7 +4,7 @@
 #include "list.h"
 
 #define IOMAP_S 1024
-#define BUFFERSIZE 1000
+#define BUFFERSIZE 256
 #define SEGMENT_SIZE 32
 #define NUM_SAVED_SEGMENTS 5
 
@@ -94,15 +94,44 @@ int quit(int key){
   return 1;
 }
 
+int backspace(int key){
+  int x,y;
+  char * p;
+  if(bufptr == buffer){
+    beep();
+    return 0;
+  }
+  getyx(stdscr, y, x);
+  if((x == 0 && y == 0)){
+    --firstbuf;
+  }else{
+    --x;
+    if(x < 0){
+      x = MAX_X - 1;
+      --y;
+    }
+    move(y,x);
+  }
+    
+  for(p = bufptr - 1; *p; ++p){
+    *(p) = *(p+1);
+  }
+  --lastbuf;
+  --bufptr;
+  redraw();
+  
+  return 0;
+}
+
 int fallbackfn(int key){
   int x,y;
   int len;
   char * p;
   if(bufptr == maxbuf){
-    return 0;
     beep();
+    return 0;
   }
-    
+
   if(key == 32 || (key >= 97 && key <= 122) || (key >= 65 && key <= 90) || (key >= 48 && key <= 57)){
     getyx(stdscr, y, x);
     if((x == MAX_X - 1 && y == MAX_Y - 1)){
@@ -112,7 +141,7 @@ int fallbackfn(int key){
       redraw();
     }
     addch(key);
-    
+
     lastbuf++;
     if(bufptr != maxbuf && *bufptr){
       len = my_strlen(bufptr);
@@ -422,6 +451,9 @@ int main(int argc, char ** argv){
   map[259] = &upArr;
   map[260] = &leftArr;
   map[261] = &rightArr;
+
+  /*backspace*/
+  map[263] = &backspace;
 
   /* resizing */
   map[410] = &resize;
