@@ -6,6 +6,7 @@
 #define IOMAP_S 1024
 #define BUFFERSIZE 1000
 #define SEGMENT_SIZE 32
+#define NUM_SAVED_SEGMENTS 5
 
 typedef int (* mapping)(int key);
 typedef struct s_node Node;
@@ -21,7 +22,7 @@ typedef struct s_message{
 mapping map[IOMAP_S];
 int lastlinestart = 0;
 char buffer[BUFFERSIZE];
-char * bufptr = buffer;
+char * bufptr = buffer, *maxbuf, *lastbuf, *firstbuf;
 int MAX_X;
 int MAX_Y;
 short colors_inverse = 1, colors_custom = 2;
@@ -32,7 +33,16 @@ Node * __DONT_TOUCH_1__ = NULL;
 Node * __DONT_TOUCH_2__ = NULL;
 Node ** box_queue = &__DONT_TOUCH_1__;
 Node ** display_queue = &__DONT_TOUCH_2__;
-
+int cursorx, cursory;
+void PROMPT_DISPLAY(char * message);
+void redraw();
+int resize(int key);
+int shiftLeft();
+void resetCursor(){
+  cursory = MAX_Y - BOX_HEIGHT;
+  cursorx = 0;
+  move(cursory, cursorx);
+}
 
 int drawQueueInRect(Node ** queue, int sx, int sy, int mx, int my){
   int oldx, oldy;
@@ -85,86 +95,143 @@ int quit(int key){
 }
 
 int fallbackfn(int key){
-  if(key&1){
-    attron(COLOR_PAIR(colors_custom));
-  }else{
-    attroff(COLOR_PAIR(colors_custom));
+  int x,y;
+  int len;
+  char * p;
+  if(bufptr == maxbuf){
+    return 0;
+    beep();
   }
-  if((key >= 97 && key <= 122) || (key >= 65 && key <= 90)){
+    
+  if(key == 32 || (key >= 97 && key <= 122) || (key >= 65 && key <= 90) || (key >= 48 && key <= 57)){
+    getyx(stdscr, y, x);
+    if((x == MAX_X - 1 && y == MAX_Y - 1)){
+      --x;
+      move(y,x);
+      ++firstbuf;
+      redraw();
+    }
     addch(key);
+    
+    lastbuf++;
+    if(bufptr != maxbuf && *bufptr){
+      len = my_strlen(bufptr);
+      for(p = bufptr + len; p >= bufptr; --p){
+	*(p+1) = *p;
+      }
+      *(bufptr++) = (char)key;
+      redraw();
+    }else{
+      *(bufptr++) = (char)key;
+      *bufptr = 0;
+    }
   }
-  *(bufptr++) = (char)key;
   return 0;
 }
 
 int enterfn(int key){
-  char c;
-  int x, y, i;
-  int delta, didsrc = 0;
-  getyx(stdscr, y, x);
-  /*insertln();*/
-  y++;
-  /*int moveby = ;*/
-  
-  delta = y - lastlinestart;
-  if(delta < 1)
-    delta = 1;
-  if(y + delta >= MAX_Y){
-    didsrc = 1;
-    for(i = 0; i < delta; ++i){
-      addch('\n');
-      scroll(stdscr);
-    }
-  }
-  x++;
-  move(y,0);
-  *bufptr = 0;
+  buffer[0] = 0;
   bufptr = buffer;
-  while((c=*(bufptr++))){
-    addch(c);
-  }
-  bufptr = buffer;
-  getyx(stdscr, y, x);
-  /*insertln();*/
-  y++;
-  lastlinestart = y;
-  x++;
-  if(didsrc){
-    addch('\n');
-    scroll(stdscr);
-    
-  }
-  move(y,0);
-  /*refresh();*/
-  /*addch(90);*/
+  lastbuf = buffer + 1;
+  firstbuf = buffer;
+  resetCursor();
+  resize(0);
   return 0;
+}
+
+int conditional_move(y,x){
+  if(y >= MAX_Y - BOX_HEIGHT && y < MAX_Y && x >= 0 && x < MAX_X ){
+    move(y,x);
+    return 1;
+  }else{
+    /*beep();*/
+  }
+  return 0;
+}
+
+int shiftRight(){
+  if(buffer == firstbuf && buffer == bufptr){
+    return 0;
+  }
+
+  --firstbuf;
+  if(firstbuf < buffer)
+    firstbuf = buffer;
+
+  --bufptr;
+  if(bufptr < buffer)
+    bufptr = buffer;  
+  
+  redraw();
+  return 1;
+}
+
+int shiftLeft(){
+  long diff = (MAX_X*BOX_HEIGHT);
+  if(bufptr >= lastbuf - 1)
+    return 0;
+  
+  if(lastbuf - buffer < diff){
+    return 0;
+  }
+
+  ++firstbuf;
+  if(firstbuf > lastbuf-diff)
+    firstbuf = lastbuf-diff;
+
+  ++bufptr;
+  if(bufptr >= lastbuf - 1)
+    bufptr = lastbuf - 1;  
+  
+  redraw();
+  return 1;
 }
 
 int leftArr(int key){
   int x, y;
   getyx(stdscr, y, x);
-  move(y,--x);
+  --x;
+  if(x < 0){
+    x = MAX_X - 1;
+    --y;
+  }
+  if(!conditional_move(y,x)){
+    if(!shiftRight())
+      beep();
+  }else{
+    --bufptr;
+  }
   return 0;
 }
 
 int rightArr(int key){
   int x, y;
   getyx(stdscr, y, x);
-  move(y,++x);
+  ++x;
+  if(x >= MAX_X){
+    x = 0;
+    ++y;
+  }
+  if(bufptr >= lastbuf - 1){
+    beep();
+    return 0;
+  }
+  if(!conditional_move(y,x)){
+    if(!shiftLeft())
+      beep();
+  }else{
+    ++bufptr;
+  }
   return 0;
 }
 
 int upArr(int key){
-  int x, y;
-  getyx(stdscr, y, x);
-  move(--y,x);
+  beep();
   return 0;
 }
 
 int downArr(int key){
-  int x, y;
-  getyx(stdscr, y, x);
-  move(++y,x);
+  beep();
   return 0;
 }
 
@@ -196,8 +263,32 @@ void displayMessages(){
   drawQueueInRect(display_queue, 0, 0, MAX_X, MAX_Y - BOX_HEIGHT - 1);
 }
 
+void textInRect(char * str, int sx, int sy, int mx, int my){
+  int oldx, oldy;
+  int x = sx, y = sy;
+  char c;
+  getyx(stdscr, oldy, oldx);
+  move(sy,sx);
+  c = 1;
+  while(y < my && c){
+    while(x < mx && (c = *(str++))){
+      addch(c);
+      ++x;
+    }
+    x = sx;
+    ++y;
+    if(x < mx && y < my)
+      move(y,x);
+  }
+      
+  move(oldy, oldx);
+}
+
 void redrawBox(){
   blankInRect(0, MAX_Y - BOX_HEIGHT, MAX_X, MAX_Y, ' ');
+  textInRect(firstbuf, 0, MAX_Y - BOX_HEIGHT, MAX_X, MAX_Y);
+  
+  /*my_int(my_strlen(buffer));*/
 }
 
 void redrawScreen(){
@@ -205,21 +296,28 @@ void redrawScreen(){
   displayMessages();
 }
 
+void redraw(){
+  writePrompt(0);
+  redrawBox();
+  redrawScreen();
+}
+
 int resize(int key){
   getmaxyx(stdscr, MAX_Y, MAX_X);
-  redrawBox();
-  writePrompt(0);
-  redrawScreen();
+  redraw();
+  resetCursor();
   return 0;
 }
 
 int writePrompt(int key){
   char * text = PROMPT.message;
   int x = 0, y;
+  int oldx, oldy;
+  getyx(stdscr, oldy, oldx);
   attron(COLOR_PAIR(colors_inverse));
   y = MAX_Y - BOX_HEIGHT;
   move(y - 1, 0);
-
+  
   
   if(text != NULL){
     for(x = 0; x < MAX_X && text[x]; ++x){
@@ -229,8 +327,8 @@ int writePrompt(int key){
   for(; x < MAX_X; ++x){
     addch(' ');
   }
-  /*for(y = 0; y < MAX_Y; ++y){*/  
-  attroff(COLOR_PAIR(colors_inverse));  
+  attroff(COLOR_PAIR(colors_inverse));
+  move(oldy, oldx);
   return 0;
 }
 
@@ -258,7 +356,6 @@ MessageSegment * newMessageSegment2(int paginate, char * text, int seg){
   return message;
 }
 
-
 void recieveMessage(char * text){
   int len = my_strlen(text);
   char * p;
@@ -268,7 +365,6 @@ void recieveMessage(char * text){
   for(p = text + len - moveBy; p >= text; p -= moveBy){
     pushMessage(newMessageSegment(paginate, p));
     paginate = 0;
-    PROMPT_DISPLAY(p);
   }
   len = moveBy - (text - p);
   if(len != 0)
@@ -281,14 +377,28 @@ int main(int argc, char ** argv){
   int c = 10;
   mapping fallback = &fallbackfn;
   mapping chosen = fallback;
-
-  recieveMessage("*");
-  recieveMessage("*");
+  maxbuf = bufptr + BUFFERSIZE - 1;
+  lastbuf = buffer + 1;
+  firstbuf = buffer;
+  /*PROMPT_DISPLAY(buffer);*/
+  
+  recieveMessage("-Three Dog Night");
+  recieveMessage(" ");
+  recieveMessage("In the halls of Shambala");
+  recieveMessage("How does your light shine");
+  recieveMessage("In the halls of Shambala");
+  recieveMessage("How does your light shine");
+  recieveMessage(" ");
+  recieveMessage("On the road to Shambala");
+  recieveMessage("I can tell my sister by the flowers in her eyes");
+  recieveMessage("On the road to Shambala");
+  recieveMessage("I can tell my sister by the flowers in her eyes");
+  recieveMessage(" ");
   recieveMessage("On the road to Shambala");
   recieveMessage("Everyone is lucky, everyone is so kind");
   recieveMessage("On the road to Shambala");
-  recieveMessage("Everyone is helpful, everyone is kind");
-  
+  recieveMessage("Everyone is helpful, everyone is kind"); 
+  recieveMessage(" ");
   recieveMessage("With the rain in Shambala");
   recieveMessage("Wash away my sorrow, wash away my shame");
   recieveMessage("With the rain in Shambala");
@@ -296,8 +406,7 @@ int main(int argc, char ** argv){
 
 
 
-
-  fallback(1);
+  
   /*  struct _win_st *win;*/
   arrs[4] = 0;
 
@@ -326,14 +435,15 @@ int main(int argc, char ** argv){
   start_color();
   init_pair(colors_custom, COLOR_BLACK, COLOR_RED);
   init_pair(colors_inverse, COLOR_BLACK, COLOR_WHITE);
-  scrollok(stdscr, TRUE);
+  /*scrollok(stdscr, TRUE);*/
   /*win = newwin(0,0,LINES,COLS);*/
+  
   keypad(stdscr, TRUE);
   noecho();
   erase();
   resize(0);
   /*fillInRect(2, 2, 4, 4, 'p', colors_custom);*/
-    
+
   while(c > 0){
     /*beep();*/
     /*move(x/80, x%80);*/
