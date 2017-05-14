@@ -395,6 +395,7 @@ int resize(int key){
   redraw();
   resetCursor();
   refresh();
+
   return 0;
 }
 
@@ -539,7 +540,7 @@ int startup(){
   noecho();
   erase();
   /*raw();*/
-  /*nodelay(stdscr, TRUE);*/
+  nodelay(stdscr, TRUE);
   resize(0);
 
   return 0;
@@ -583,11 +584,12 @@ int main(int argc, char *argv[])
   int alive, exitrequested;
   int shouldwrite;
   fd_set fds;
+  int c;
   int maxfd;
   struct sockaddr_in serv_addr;
   struct hostent *server;
   char outbuffer[256];
-
+  struct timeval timeout;
   /*startup();
   while(!loopIter(getch()));
   if(my_exit(1))
@@ -626,19 +628,22 @@ int main(int argc, char *argv[])
     return my_exit(1);
   }
 
+  timeout.tv_sec = 0;
+  timeout.tv_usec = 0;
+
   while(alive){
     outbuffer[0] = 0;    
     FD_ZERO(&fds);
     FD_SET(sockfd, &fds);
     FD_SET(STDIN, &fds);
     refresh();
-    select(maxfd+1, &fds, NULL, NULL, NULL);
+    select(maxfd+1, &fds, NULL, NULL, &timeout);
     shouldwrite = 0;
-    /*c = getch();*/
-    
-    if (FD_ISSET(STDIN, &fds)){
+    c = getch();
+    if(c != ERR){
+    /*if (FD_ISSET(STDIN, &fds)){*/
       
-      if(loopIter(getch()))
+      if(loopIter(c))
 	return my_exit(1);
       refresh();
       /*if((c = getch()) != ERR && loopIter(c))
