@@ -500,7 +500,7 @@ int startup(){
   recieveMessage("With the rain in Shambala");
   recieveMessage("Wash away my troubles, wash away my pain");
 
-
+  WIPE_PROMPT();
 
   
   /*  struct _win_st *win;*/
@@ -509,7 +509,7 @@ int startup(){
     map[i] = NULL;
   }
 
-  map[23] = &quit;
+  /*map[23] = &quit;*/
   map[10] = &enterfn;
 
   /*arrs*/
