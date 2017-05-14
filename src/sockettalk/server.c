@@ -12,6 +12,8 @@ I pledge my honor that I have abided by the Stevens Honor System.
 #include "list.h"
 #include "my.h"
 
+#define OUTPUTSIZE 512
+
 const char * ss_mess = "::server:: '";
 int len_ss_mess;
 const char * ss_left = "' has left the chat";
@@ -223,10 +225,10 @@ int readFromClient(int fd){
   char * nick;
   Node * temp = NULL;
   int n, oldlen;
-  char outbuffer[256];
+  char outbuffer[OUTPUTSIZE];
   char buffer[256];
   my_zero(buffer, 256);
-  my_zero(outbuffer, 256);
+  my_zero(outbuffer, OUTPUTSIZE);
   temp = *client_list;
   client = NULL;
   while(temp != NULL){
@@ -253,12 +255,16 @@ int readFromClient(int fd){
       writeToClient(client, "::server:: we're not accepting that nickname, try another");
       return 0;
     }
+    if(my_strlen(buffer) > 20){
+      writeToClient(client, "::server:: maximum namelength of 20.");
+      return 0;
+    }
+
     my_str("new user: "), my_str(buffer), my_str("\n");
     client->name = my_strdup(buffer);
     client->name_len = my_strlen(client->name);
     
-    if (writeToClient(client, "Welcome!") < 0){
-      
+    if (writeToClient(client, "Welcome!") < 0){      
       return removeCLU(client_list, temp);
     }
     sendJoinMessage(client);

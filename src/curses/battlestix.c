@@ -183,7 +183,7 @@ int fallbackfn(int key){
   int x,y;
   int len;
   char * p;
-  if(bufptr == maxbuf){
+  if(lastbuf - 1 == maxbuf){
     beep();
     return 0;
   }
