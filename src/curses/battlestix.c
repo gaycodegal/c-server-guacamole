@@ -2,6 +2,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "list.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h> 
+#include "my.h"
+
+#define STDIN 0
 
 #define IOMAP_S 1024
 #define BUFFERSIZE 256
@@ -38,11 +48,56 @@ void redraw();
 int resize(int key);
 int shiftLeft();
 void recieveMessage(char * text);
+int alive;
+int sockfd;
 
 void resetCursor(){
   cursory = MAX_Y - BOX_HEIGHT;
   cursorx = 0;
   move(cursory, cursorx);
+  bufptr = buffer;
+  firstbuf = buffer;
+}
+
+int error(char * message){
+  PROMPT_DISPLAY(message);
+  return -1;
+}
+
+int errorstr(char * message){
+  my_str(message),my_str("\n");
+  return -1;
+}
+
+/*
+send a message somewhere
+ */
+void writemessage(int fd, char * buffer){
+  int n;
+  n = write(fd,buffer,my_strlen(buffer));
+  fsync(fd);
+  if (n < 0) 
+    error("ERROR writing to socket");
+}
+
+/*
+zeros out things
+ */
+void my_zero(char * c, int size){
+  int i;
+  for(i = 0; i < size; ++i){
+    c[i] = 0;
+  }
+}
+
+/*
+copies things
+ */
+void my_copy(char * a, char * b, int len){
+  int i = 0;
+  for(i = 0; i < len; ++i){
+    b[i] = a[i];
+  }
 }
 
 int drawQueueInRect(Node ** queue, int sx, int sy, int mx, int my){
@@ -133,7 +188,7 @@ int fallbackfn(int key){
     return 0;
   }
 
-  if(key == 32 || (key >= 97 && key <= 122) || (key >= 65 && key <= 90) || (key >= 48 && key <= 57)){
+  if(key >= 32 && key <= 126){
     getyx(stdscr, y, x);
     if((x == MAX_X - 1 && y == MAX_Y - 1)){
       --x;
@@ -160,7 +215,8 @@ int fallbackfn(int key){
 }
 
 int enterfn(int key){
-  recieveMessage(buffer);
+  writemessage(sockfd, buffer);
+  /*PROMPT_DISPLAY(buffer);*/
   buffer[0] = 0;
   bufptr = buffer;
   lastbuf = buffer + 1;
@@ -335,8 +391,10 @@ void redraw(){
 
 int resize(int key){
   getmaxyx(stdscr, MAX_Y, MAX_X);
+
   redraw();
   resetCursor();
+  refresh();
   return 0;
 }
 
@@ -392,7 +450,7 @@ void recieveMessage(char * text){
   char * p;
   int paginate = 1;
   int moveBy = SEGMENT_SIZE - 1;
-  
+  PROMPT_DISPLAY(text);  
   for(p = text + len - moveBy; p >= text; p -= moveBy){
     pushMessage(newMessageSegment(paginate, p));
     paginate = 0;
@@ -407,15 +465,16 @@ void * freeAThing(void * elem){
   return NULL;
 }
 
-int main(int argc, char ** argv){  
-  int x = 0, i;
-  int arrs[5];
-  int c = 10;
-  mapping fallback = &fallbackfn;
-  mapping chosen = fallback;
+mapping fallback;
+mapping chosen;
+
+int startup(){  
+  int i;
   maxbuf = bufptr + BUFFERSIZE - 1;
   lastbuf = buffer + 1;
   firstbuf = buffer;
+  fallback = &fallbackfn;
+  chosen = fallback;
   /*PROMPT_DISPLAY(buffer);*/
   
   recieveMessage("-Three Dog Night");
@@ -444,7 +503,6 @@ int main(int argc, char ** argv){
 
   
   /*  struct _win_st *win;*/
-  arrs[4] = 0;
 
   for(i = 0; i < IOMAP_S; ++i){
     map[i] = NULL;
@@ -480,31 +538,157 @@ int main(int argc, char ** argv){
   keypad(stdscr, TRUE);
   noecho();
   erase();
+  /*raw();*/
+  /*nodelay(stdscr, TRUE);*/
   resize(0);
-  /*fillInRect(2, 2, 4, 4, 'p', colors_custom);*/
 
-  while(c > 0){
-    /*beep();*/
-    /*move(x/80, x%80);*/
-    /*timeout(-1);*/
-    c = getch();
-    arrs[x%4] = (int)c;
-    ++x;
-    chosen = map[c];
-    if(chosen == NULL)
-      chosen = fallback;
-    if(chosen(c)){
-      break;
-    }
-    
-    /*beep();*/
-  }
+  return 0;
+}
+
+int loopIter(int c){
+  /*fillInRect(2, 2, 4, 4, 'p', colors_custom);*/
+  /*beep();*/
+  /*move(x/80, x%80);*/
+  /*timeout(-1);*/
+  chosen = map[c];
+  if(chosen == NULL)
+    chosen = fallback;
+  return chosen(c);
+  /*beep();*/
+}
+
+int closeUp(){
   /*delwin(win);*/
   echo();
+  /*noraw();*/
   endwin();
-  printf("%i %i %i %i\n", arrs[0], arrs[1], arrs[2], arrs[3]);
   static_map_list(*display_queue, freeAThing);
   empty_list(display_queue);
   return 0;
 }
 
+int my_exit(int code){
+  closeUp();
+  return code;
+}
+
+/*
+a basic client capable of sending ascii.
+will terminate if there is no server or it recieves the 
+string /exit from the server. Type /exit to quit.
+ */
+int main(int argc, char *argv[])
+{
+  int portno, n;
+  int alive, exitrequested;
+  int shouldwrite;
+  fd_set fds;
+  int maxfd;
+  struct sockaddr_in serv_addr;
+  struct hostent *server;
+  char outbuffer[256];
+
+  /*startup();
+  while(!loopIter(getch()));
+  if(my_exit(1))
+  return 0;*/
+
+  exitrequested = 0;
+  alive = 1;
+  if (argc < 3) {
+    my_str("usage: "),my_str(argv[0]), my_str(" hostname port\n");
+    exit(0);
+  }
+  portno = atoi(argv[2]);
+  sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  if (sockfd < 0) 
+    return errorstr("ERROR opening socket");
+  server = gethostbyname(argv[1]);
+  if (server == NULL) {
+    return errorstr("ERROR, no such host\n");
+  }
+  my_zero((char *) &serv_addr, sizeof(serv_addr));
+  serv_addr.sin_family = AF_INET;
+  my_copy((char *)server->h_addr, 
+	(char *)&serv_addr.sin_addr.s_addr,
+	server->h_length);
+  serv_addr.sin_port = htons(portno);
+  if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) 
+    return errorstr("ERROR connecting");
+
+  PROMPT_DISPLAY("Please enter your username: ");
+  /*my_zero(inbuffer,256);
+  fgets(inbuffer,255,stdin);
+  writemessage(sockfd, inbuffer);*/
+  
+  maxfd = STDIN < sockfd ? sockfd : STDIN;
+  if(startup()){
+    return my_exit(1);
+  }
+
+  while(alive){
+    outbuffer[0] = 0;    
+    FD_ZERO(&fds);
+    FD_SET(sockfd, &fds);
+    FD_SET(STDIN, &fds);
+    refresh();
+    select(maxfd+1, &fds, NULL, NULL, NULL);
+    shouldwrite = 0;
+    /*c = getch();*/
+    
+    if (FD_ISSET(STDIN, &fds)){
+      
+      if(loopIter(getch()))
+	return my_exit(1);
+      refresh();
+      /*if((c = getch()) != ERR && loopIter(c))
+	return my_exit(1);
+	refresh();*/
+
+      /*my_zero(inbuffer,256);
+      n = read(STDIN,inbuffer,255);
+      inbuffer[n] = 0;
+      if (n < 0) 
+	return my_exit(error("whao couldn't read from stdin\n"));
+	shouldwrite = 1;*/
+    }
+   
+    
+    if (FD_ISSET(sockfd, &fds)){
+      my_zero(outbuffer,256);
+      n = read(sockfd,outbuffer,255);
+      outbuffer[n] = 0;
+      if (n < 0) {
+	my_exit(-1);
+	return errorstr("whao, couldn't read from server");
+      }else if(n == 0){
+	alive = 0;
+	my_exit(-1);
+	return errorstr("Server unexpectedly terminated");	 
+      }
+      if(!(outbuffer[0] == '/' &&
+	   my_strcmp("/exit", outbuffer) == 0)){
+	recieveMessage(outbuffer), redraw();
+      }
+    }
+    
+        
+    if(alive && outbuffer[0] == '/'){
+      if(my_strcmp("/exit", outbuffer) == 0){
+	my_exit(0);
+	errorstr("Session Terminated by Server");
+	return 0;
+      }
+    }
+
+    if(exitrequested){
+      shouldwrite = 0;
+    }
+    
+    /*if(alive && shouldwrite){
+      writemessage(sockfd, inbuffer);
+      } */   
+    ++shouldwrite;
+  }
+  return my_exit(0);
+}
