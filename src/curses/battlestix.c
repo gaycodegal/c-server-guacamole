@@ -15,6 +15,7 @@
 
 #define IOMAP_S 1024
 #define BUFFERSIZE 256
+#define IN_BUFFSIZE 278
 #define SEGMENT_SIZE 32
 #define NUM_SAVED_SEGMENTS 5
 
@@ -36,7 +37,7 @@ char buffer[BUFFERSIZE];
 char * bufptr = buffer, *maxbuf, *lastbuf, *firstbuf;
 int MAX_X;
 int MAX_Y;
-short colors_inverse = 1, colors_custom = 2;
+short colors_prompt = 1, colors_display = 2, colors_input = 3;
 int BOX_HEIGHT = 3, DISPLAY_HEIGHT;
 Prompt PROMPT;
 int writePrompt(int);
@@ -46,6 +47,7 @@ int cursorx, cursory;
 void PROMPT_DISPLAY(char * message);
 void redraw();
 int resize(int key);
+int rightArr(int key);
 int shiftLeft();
 void recieveMessage(char * text);
 int alive;
@@ -196,7 +198,9 @@ int fallbackfn(int key){
       ++firstbuf;
       redraw();
     }
+    attron(COLOR_PAIR(colors_input));
     addch(key);
+    attroff(COLOR_PAIR(colors_input));
 
     lastbuf++;
     if(bufptr != maxbuf && *bufptr){
@@ -210,6 +214,16 @@ int fallbackfn(int key){
       *(bufptr++) = (char)key;
       *bufptr = 0;
     }
+  }
+  return 0;
+}
+
+int deletekey(){
+  if(bufptr < lastbuf - 1){
+    rightArr(0);
+    backspace(0);
+  }else{
+    beep();
   }
   return 0;
 }
@@ -372,15 +386,18 @@ void textInRect(char * str, int sx, int sy, int mx, int my){
 }
 
 void redrawBox(){
+  attron(COLOR_PAIR(colors_input));
   blankInRect(0, MAX_Y - BOX_HEIGHT, MAX_X, MAX_Y, ' ');
   textInRect(firstbuf, 0, MAX_Y - BOX_HEIGHT, MAX_X, MAX_Y);
-  
+  attroff(COLOR_PAIR(colors_input));
   /*my_int(my_strlen(buffer));*/
 }
 
 void redrawScreen(){
+  attron(COLOR_PAIR(colors_display));
   blankInRect(0, 0, MAX_X, MAX_Y - BOX_HEIGHT - 1, ' ');
   displayMessages();
+  attroff(COLOR_PAIR(colors_display));
 }
 
 void redraw(){
@@ -404,7 +421,7 @@ int writePrompt(int key){
   int x = 0, y;
   int oldx, oldy;
   getyx(stdscr, oldy, oldx);
-  attron(COLOR_PAIR(colors_inverse));
+  attron(COLOR_PAIR(colors_prompt));
   y = MAX_Y - BOX_HEIGHT;
   move(y - 1, 0);
   
@@ -417,7 +434,7 @@ int writePrompt(int key){
   for(; x < MAX_X; ++x){
     addch(' ');
   }
-  attroff(COLOR_PAIR(colors_inverse));
+  attroff(COLOR_PAIR(colors_prompt));
   move(oldy, oldx);
   return 0;
 }
@@ -520,6 +537,9 @@ int startup(){
 
   /*backspace*/
   map[263] = &backspace;
+  /*delete*/
+  map[KEY_DC] = &deletekey;
+  map[58] = &deletekey;
 
   /* resizing */
   map[410] = &resize;
@@ -531,8 +551,12 @@ int startup(){
     return 1;
   }
   start_color();
-  init_pair(colors_custom, COLOR_BLACK, COLOR_RED);
-  init_pair(colors_inverse, COLOR_BLACK, COLOR_WHITE);
+  init_color(COLOR_RED, 184, 142, 12);
+  init_color(COLOR_GREEN, 78, 154, 6);
+  /*init_color(COLOR_BLUE, 78, 154, 6);*/
+  init_pair(colors_display, COLOR_BLACK, COLOR_GREEN);
+  init_pair(colors_input, COLOR_BLACK, COLOR_YELLOW);
+  init_pair(colors_prompt, COLOR_BLACK, COLOR_WHITE);
   /*scrollok(stdscr, TRUE);*/
   /*win = newwin(0,0,LINES,COLS);*/
   
@@ -547,7 +571,6 @@ int startup(){
 }
 
 int loopIter(int c){
-  /*fillInRect(2, 2, 4, 4, 'p', colors_custom);*/
   /*beep();*/
   /*move(x/80, x%80);*/
   /*timeout(-1);*/
@@ -588,7 +611,7 @@ int main(int argc, char *argv[])
   int maxfd;
   struct sockaddr_in serv_addr;
   struct hostent *server;
-  char outbuffer[256];
+  char outbuffer[IN_BUFFSIZE];
   struct timeval timeout;
   /*startup();
   while(!loopIter(getch()));
@@ -619,8 +642,8 @@ int main(int argc, char *argv[])
     return errorstr("ERROR connecting");
 
   PROMPT_DISPLAY("Please enter your username: ");
-  /*my_zero(inbuffer,256);
-  fgets(inbuffer,255,stdin);
+  /*my_zero(inbuffer,IN_BUFFSIZE);
+  fgets(inbuffer,IN_BUFFSIZE - 1,stdin);
   writemessage(sockfd, inbuffer);*/
   
   maxfd = STDIN < sockfd ? sockfd : STDIN;
@@ -650,8 +673,8 @@ int main(int argc, char *argv[])
 	return my_exit(1);
 	refresh();*/
 
-      /*my_zero(inbuffer,256);
-      n = read(STDIN,inbuffer,255);
+      /*my_zero(inbuffer,IN_BUFFSIZE);
+      n = read(STDIN,inbuffer,IN_BUFFSIZE - 1);
       inbuffer[n] = 0;
       if (n < 0) 
 	return my_exit(error("whao couldn't read from stdin\n"));
@@ -660,8 +683,8 @@ int main(int argc, char *argv[])
    
     
     if (FD_ISSET(sockfd, &fds)){
-      my_zero(outbuffer,256);
-      n = read(sockfd,outbuffer,255);
+      my_zero(outbuffer,IN_BUFFSIZE);
+      n = read(sockfd,outbuffer,IN_BUFFSIZE - 1);
       outbuffer[n] = 0;
       if (n < 0) {
 	my_exit(-1);
@@ -669,7 +692,7 @@ int main(int argc, char *argv[])
       }else if(n == 0){
 	alive = 0;
 	my_exit(-1);
-	return errorstr("Server unexpectedly terminated");	 
+	return errorstr("Connection Terminated by Server.");
       }
       if(!(outbuffer[0] == '/' &&
 	   my_strcmp("/exit", outbuffer) == 0)){
@@ -681,7 +704,7 @@ int main(int argc, char *argv[])
     if(alive && outbuffer[0] == '/'){
       if(my_strcmp("/exit", outbuffer) == 0){
 	my_exit(0);
-	errorstr("Session Terminated by Server");
+	errorstr("Connection Terminated by Server.");
 	return 0;
       }
     }

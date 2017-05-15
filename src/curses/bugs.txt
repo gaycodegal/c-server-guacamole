@@ -1,0 +1,62 @@
+# C Server Guacamole
+
+## Didn't Bother to Fix *(Solution Explained)*
+
+P: If the client recieves a whole bunch of messages from the server really quickly it will assume they are one message, thus not putting them on the same line.
+S: Make the server terminate messages on a new line and then do a split on any server messages recieved.
+
+P: Pressing ctrl+s makes my project freeze. Probably a control command.
+S: noraw()/raw(), but then I'd have to handle ctrl+c
+
+P: All input to the client is stored and if you had a really (infinitely) long screen, this would display. However, this means that the program will eventually run out of memory if you send in a TON of messages.
+S: Make a #define maximum number of message segments logged, and trim the tail of the display_queue (keep a second pointer to the tail of the display_queue, and trim as necessary).
+
+P: I have no delete key on either of my computers, therefore I couldn't test pressing the delete key.
+S: (implemented) I put in a KEY_DC binding, but also overwrote the functionality of the ':' key to be delete. I chose to do this because my server has the ':' key blacklisted.
+
+P: If you get getch() to return something negative or larger than 1023 that is not ERR then the program will likely segfault.
+S: Bound check when retrieving a function mapping.
+
+## Notes
+
+Note: Up and down keys beep() when pressed. This is outside of the requirements, which ask for nothing to happen, but I wanted sound to alert the user they couldn't do this.
+
+Note: Screen not scrolled using normal scrolling, instead there is a linked list that displays the saved messages in chunks of SEGMENT_SIZE (32) and a s_message, which holds whether the message is a line end or not. This means that scrolling is possible by creating a pointer to where in the display_queue drawing should start.
+
+Note: Many things beep() if you're doing something wrong, like trying to left/right arrow key past the beginning/end of the typed message, backspacing at the start of what you typed, or deleting when there's nothing to delete under your cursor.
+
+Note: Users can change their name to spaces, or other garbage, but I didn't think this was an issue.
+
+Note: The server rejects all names starting with a /, for clarity reasons. However, they may have '/'s after the first character of their name.
+
+Note: Users can do "/me" or "/me " to send just their name followed by a space. This is okay in my opinion, so I left it as a feature. "/nick " appears to not be judged a valid username by the server.
+
+Note: Clients can terminate their connection via ctrl+c.
+
+Note: Clients can be stopped with ctrl+z, and the server will not think they're stopped. Thus, when they are restarted, the server will interact with them normally. Have not tested over long periods of sleep.
+
+## Fixed 
+
+P: The server uses ':'s to denote user speach and server messages, we therefore don't want users being able to spoof other users.
+S: ':' is now blacklisted and will be replaced with a null terminator when recieved by the server.
+
+P: When resizing the screen would do the resize fine, but input would no longer be recognized until next resize.
+S: Turn select and getch to nonblocking, therefore checking for input even when stdin didn't recognize it.
+
+P: Delete key would delete the last character at the end of the string.
+S: Catch for this off by one error.
+
+P: When the input buffer was the same size as the output buffer, messages segments would appear split, but in the wrong order.
+S: Make the input buffer exactly large enough.
+
+P: Usernames able to consume entire input space, leading to server segfaults on any message.
+S: Make cap on name length to 20 chars; make output buffer of server bigger than input buffer.
+
+P: Able to overflow buffer on client side when typing something really long.
+S: Bound check, and if not enough room in buffer, simply stop taking in input and alert the user by beep()!
+
+P: If you overwrite the content of __DONT_TOUCH_2__ then the display_queue will become corrupted.
+S: Either don't touch it, or malloc it (I just did the first of those two).
+
+P: Can't use getch and select at the same time, both block.
+S: STDIN should trigger on character input, so listen on that and then both things can be done via select because getch will always have input when called, and will be called as soon as input is available. However, this lead to another problem, which is described and solved above involving resizing and non-blocking calls.
