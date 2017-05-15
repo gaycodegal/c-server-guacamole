@@ -1,4 +1,5 @@
-# C Server Guacamole
+# Guacamole-Client
+*Yes my chat client is guacamole-themed. Deal with it.*
 
 ## Didn't Bother to Fix *(Solution Explained)*
 
@@ -17,7 +18,17 @@ S: (implemented) I put in a KEY_DC binding, but also overwrote the functionality
 P: If you get getch() to return something negative or larger than 1023 that is not ERR then the program will likely segfault.
 S: Bound check when retrieving a function mapping.
 
+P: If your terminal screen is too small, you cannot read the prompt.
+S: Marquee style scrolling possibly.
+
+P: The prompt blanks upon any call to redraw(), including a call to resize(), this is intentional, although somewhat less than optimal.
+S: Make it better and stay up longer. Also possibly only display messages starting with ::server:: to the prompt.
+
 ## Notes
+
+Note: The top part of the screen (Avacodo Green) is the "display" where messages from the server are displayed. The middle part of the screen (White) is the "prompt" and will display instructions or the latest directive from the server.
+
+Note: The chat client starts with quotes from "Shambala" by Three Dog Night. It is attributed to Three Dog Night, and this is a feature, not a bug.
 
 Note: Up and down keys beep() when pressed. This is outside of the requirements, which ask for nothing to happen, but I wanted sound to alert the user they couldn't do this.
 
@@ -34,6 +45,8 @@ Note: Users can do "/me" or "/me " to send just their name followed by a space. 
 Note: Clients can terminate their connection via ctrl+c.
 
 Note: Clients can be stopped with ctrl+z, and the server will not think they're stopped. Thus, when they are restarted, the server will interact with them normally. Have not tested over long periods of sleep.
+
+Note: As you didn't require any specific naming of source code, the client is under battlestix.c, although it compiles to a form where you can do `./client localhost 5000` as normal.
 
 ## Fixed 
 

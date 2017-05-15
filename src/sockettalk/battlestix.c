@@ -240,7 +240,7 @@ int enterfn(int key){
   return 0;
 }
 
-int conditional_move(y,x){
+int conditional_move(int y, int x){
   if(y >= MAX_Y - BOX_HEIGHT && y < MAX_Y && x >= 0 && x < MAX_X ){
     move(y,x);
     return 1;
@@ -500,10 +500,10 @@ int startup(){
   recieveMessage("In the halls of Shambala");
   recieveMessage("How does your light shine");
   recieveMessage("In the halls of Shambala");
-  recieveMessage("How does your light shine");
+  recieveMessage("Tell me, how does your light shine");
   recieveMessage(" ");
   recieveMessage("On the road to Shambala");
-  recieveMessage("I can tell my sister by the flowers in her eyes");
+  recieveMessage("I can tell my brother by the flowers in her eyes");
   recieveMessage("On the road to Shambala");
   recieveMessage("I can tell my sister by the flowers in her eyes");
   recieveMessage(" ");
@@ -517,7 +517,7 @@ int startup(){
   recieveMessage("With the rain in Shambala");
   recieveMessage("Wash away my troubles, wash away my pain");
 
-  WIPE_PROMPT();
+  PROMPT_DISPLAY("(Guacamole-Client v0.9.1) Please Enter Your Name.");
 
   
   /*  struct _win_st *win;*/
