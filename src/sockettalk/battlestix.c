@@ -690,6 +690,8 @@ int startup(){
   one iteration of input handling for the client.
  */
 int loopIter(int c){
+  if(c >= IOMAP_S)
+    return 0;
   /*beep();*/
   /*move(x/80, x%80);*/
   /*timeout(-1);*/
