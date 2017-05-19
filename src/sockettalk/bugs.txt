@@ -9,9 +9,6 @@ S: Make the server terminate messages on a new line and then do a split on any s
 P: Pressing ctrl+s makes my project freeze. Probably a control command.
 S: noraw()/raw(), but then I'd have to handle ctrl+c
 
-P: All input to the client is stored and if you had a really (infinitely) long screen, this would display. However, this means that the program will eventually run out of memory if you send in a TON of messages.
-S: Make a #define maximum number of message segments logged, and trim the tail of the display_queue (keep a second pointer to the tail of the display_queue, and trim as necessary).
-
 P: I have no delete key on either of my computers, therefore I couldn't test pressing the delete key.
 S: (implemented) I put in a KEY_DC binding, but also overwrote the functionality of the ':' key to be delete. I chose to do this because my server has the ':' key blacklisted.
 
@@ -49,6 +46,9 @@ Note: Clients can be stopped with ctrl+z, and the server will not think they're 
 Note: As you didn't require any specific naming of source code, the client is under battlestix.c, although it compiles to a form where you can do `./client localhost 5000` as normal.
 
 ## Fixed 
+
+P: All input to the client is stored and if you had a really (infinitely) long screen, this would display. However, this means that the program will eventually run out of memory if you send in a TON of messages.
+S: Make a #define maximum number of message segments logged, and trim the tail of the display_queue (keep a second pointer to the tail of the display_queue, and trim as necessary).
 
 P: The server uses ':'s to denote user speach and server messages, we therefore don't want users being able to spoof other users.
 S: ':' is now blacklisted and will be replaced with a null terminator when recieved by the server.

@@ -1,7 +1,7 @@
 SERVER = server
 CLIENT = client
 all:
-	make re -C ../list
+#	make re -C ../list
 	gcc $(SERVER).c -o ./$(SERVER) -Wall -Werror -pedantic -I../../include -L../../lib -lmy -llist
 	gcc battlestix.c -o ./$(CLIENT) -Wall -Werror -pedantic  -lcurses  -I../../include -L../../lib -lmy -llist
 clean:

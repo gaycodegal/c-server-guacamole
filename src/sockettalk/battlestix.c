@@ -14,7 +14,7 @@
 #define BUFFERSIZE 256
 #define IN_BUFFSIZE 278
 #define SEGMENT_SIZE 32
-#define NUM_SAVED_SEGMENTS 5
+#define NUM_SAVED_SEGMENTS 300
 
 typedef int (* mapping)(int key);
 
@@ -38,6 +38,7 @@ short colors_prompt = 1, colors_display = 2, colors_input = 3;
 int BOX_HEIGHT = 3, DISPLAY_HEIGHT;
 Prompt PROMPT;
 int writePrompt(int);
+int display_queue_len = 0;
 Node ** display_queue, **display_tail;
 int cursorx, cursory;
 void PROMPT_DISPLAY(char * message);
@@ -48,6 +49,7 @@ int shiftLeft();
 void recieveMessage(char * text);
 int alive;
 int sockfd;
+
 
 /*
   reset the cursor's position.
@@ -568,14 +570,25 @@ void recieveMessage(char * text){
   for(p = text + len - moveBy; p >= text; p -= moveBy){
     pushMessage(newMessageSegment(paginate, p));
     paginate = 0;
+    ++display_queue_len;
   }
   len = moveBy - (text - p);
-  if(len != 0)
+  if(len != 0){
     pushMessage(newMessageSegment2(paginate, text, len));
+    ++display_queue_len;
+  }
   if(*display_tail == NULL)
     *display_tail = last_node(*display_queue);
+  while(display_queue_len > NUM_SAVED_SEGMENTS){
+    remove_node(display_tail);
+    --display_queue_len;
+  }
 }
 
+/*
+  frees something and returns NULL
+  used for mapping over a list
+ */
 void * freeAThing(void * elem){
   free(elem);
   return NULL;
@@ -584,6 +597,9 @@ void * freeAThing(void * elem){
 mapping fallback;
 mapping chosen;
 
+/*
+  starts the graphical curses client
+ */
 int startup(){  
   int i;
   display_queue = make_empty_list();
@@ -670,6 +686,9 @@ int startup(){
   return 0;
 }
 
+/*
+  one iteration of input handling for the client.
+ */
 int loopIter(int c){
   /*beep();*/
   /*move(x/80, x%80);*/
@@ -681,6 +700,9 @@ int loopIter(int c){
   /*beep();*/
 }
 
+/*
+  end the graphical client.
+ */
 int closeUp(){
   /*delwin(win);*/
   echo();
@@ -693,6 +715,9 @@ int closeUp(){
   return 0;
 }
 
+/*
+  in case we need to wrap the closup
+ */
 int my_exit(int code){
   closeUp();
   return code;
