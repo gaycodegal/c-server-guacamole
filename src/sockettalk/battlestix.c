@@ -156,6 +156,9 @@ int drawQueueInRect(Node ** queue, int sx, int sy, int mx, int my){
   wipe the prompt's contents and redraw.
  */
 void WIPE_PROMPT(){
+  if(PROMPT.message != NULL){
+    free(PROMPT.message);
+  }
   PROMPT.message = NULL;
   PROMPT.begin = NULL;
   writePrompt(0);
@@ -519,8 +522,10 @@ int writePrompt(int key){
   display a message on the prompt
  */
 void PROMPT_DISPLAY(char * message){
-  PROMPT.message = message;
-  PROMPT.begin = message;
+  if(PROMPT.message)
+    free(PROMPT.message);
+  PROMPT.message = my_strdup(message);
+  PROMPT.begin = PROMPT.message;
   writePrompt(0);  
 }
 
@@ -566,7 +571,9 @@ void recieveMessage(char * text){
   char * p;
   int paginate = 1;
   int moveBy = SEGMENT_SIZE - 1;
-  PROMPT_DISPLAY(text);  
+  if(len == 0)
+    return;
+  PROMPT_DISPLAY(text);
   for(p = text + len - moveBy; p >= text; p -= moveBy){
     pushMessage(newMessageSegment(paginate, p));
     paginate = 0;
@@ -609,6 +616,7 @@ int startup(){
   firstbuf = buffer;
   fallback = &fallbackfn;
   chosen = fallback;
+  PROMPT.message = PROMPT.begin = NULL;
   /*PROMPT_DISPLAY(buffer);*/
   
   recieveMessage("-Three Dog Night");
@@ -706,6 +714,7 @@ int loopIter(int c){
   end the graphical client.
  */
 int closeUp(){
+  WIPE_PROMPT();
   /*delwin(win);*/
   echo();
   /*noraw();*/
