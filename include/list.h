@@ -19,6 +19,11 @@ struct s_node {
 };
 
 /*
+  allocates a pointer to an empty list
+ */
+struct s_node ** make_empty_list();
+
+/*
   Allocates and returns a node with the given element. You may
   create nodes with NULL element.
 */
@@ -86,6 +91,11 @@ int count_s_nodes(struct s_node* head);
 void empty_list(struct s_node** head);
 
 /*
+  Empties the list and then frees the list pointer
+ */
+void free_list(struct s_node** head);
+
+/*
   maps in place over the list
   starts at head and goes to end.
   replaces the elems in this list with the returned value;
@@ -97,6 +107,12 @@ void static_map_list(struct s_node* head, void* (* map_fn)(void * elem));
   Parse once
 */
 struct s_node* node_at(struct s_node* head, int n);
+
+/*
+  Returns a pointer to the last node.
+*/
+struct s_node* last_node(struct s_node* head);
+
 
 /*
   Returns a pointer to the elem at index n or the last node.
