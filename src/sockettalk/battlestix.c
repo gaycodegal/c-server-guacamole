@@ -1,8 +1,5 @@
 #include <curses.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include "list.h"
-#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -41,8 +38,7 @@ short colors_prompt = 1, colors_display = 2, colors_input = 3;
 int BOX_HEIGHT = 3, DISPLAY_HEIGHT;
 Prompt PROMPT;
 int writePrompt(int);
-Node * __DONT_TOUCH_2__ = NULL;
-Node ** display_queue = &__DONT_TOUCH_2__;
+Node ** display_queue, **display_tail;
 int cursorx, cursory;
 void PROMPT_DISPLAY(char * message);
 void redraw();
@@ -53,6 +49,9 @@ void recieveMessage(char * text);
 int alive;
 int sockfd;
 
+/*
+  reset the cursor's position.
+ */
 void resetCursor(){
   cursory = MAX_Y - BOX_HEIGHT;
   cursorx = 0;
@@ -61,11 +60,17 @@ void resetCursor(){
   firstbuf = buffer;
 }
 
+/*
+  error, and print out to the prompt
+ */
 int error(char * message){
   PROMPT_DISPLAY(message);
   return -1;
 }
 
+/*
+  error, and print out onto the screen.
+ */
 int errorstr(char * message){
   my_str(message),my_str("\n");
   return -1;
@@ -102,6 +107,9 @@ void my_copy(char * a, char * b, int len){
   }
 }
 
+/*
+draw a message queue in a rectangle.
+ */
 int drawQueueInRect(Node ** queue, int sx, int sy, int mx, int my){
   int oldx, oldy;
   int x = sx, y = sy;
@@ -142,16 +150,25 @@ int drawQueueInRect(Node ** queue, int sx, int sy, int mx, int my){
   return y - paginate;
 }
 
+/*
+  wipe the prompt's contents and redraw.
+ */
 void WIPE_PROMPT(){
   PROMPT.message = NULL;
   PROMPT.begin = NULL;
   writePrompt(0);
 }
 
+/*
+  bind to keys that should make the program quit
+ */
 int quit(int key){
   return 1;
 }
 
+/*
+  acts like a backspace should
+ */
 int backspace(int key){
   int x,y;
   char * p;
@@ -181,6 +198,9 @@ int backspace(int key){
   return 0;
 }
 
+/*
+  types things to the screen normally if they fall within the accepted input range.
+ */
 int fallbackfn(int key){
   int x,y;
   int len;
@@ -218,7 +238,10 @@ int fallbackfn(int key){
   return 0;
 }
 
-int deletekey(){
+/*
+  deletes the character currently at the cursor or beeps 
+ */
+int deletekey(int key){
   if(bufptr < lastbuf - 1){
     rightArr(0);
     backspace(0);
@@ -228,6 +251,9 @@ int deletekey(){
   return 0;
 }
 
+/*
+  send the current buffer as a message, wipe the current buffer.
+ */
 int enterfn(int key){
   writemessage(sockfd, buffer);
   /*PROMPT_DISPLAY(buffer);*/
@@ -240,6 +266,9 @@ int enterfn(int key){
   return 0;
 }
 
+/*
+ exec the move command iff it's a legal move within the user input area
+ */
 int conditional_move(int y, int x){
   if(y >= MAX_Y - BOX_HEIGHT && y < MAX_Y && x >= 0 && x < MAX_X ){
     move(y,x);
@@ -250,6 +279,9 @@ int conditional_move(int y, int x){
   return 0;
 }
 
+/*
+scrolls the user input text right
+ */
 int shiftRight(){
   if(buffer == firstbuf && buffer == bufptr){
     return 0;
@@ -267,6 +299,9 @@ int shiftRight(){
   return 1;
 }
 
+/*
+scrolls the user input text left
+ */
 int shiftLeft(){
   long diff = (MAX_X*BOX_HEIGHT);
   if(bufptr >= lastbuf - 1)
@@ -288,6 +323,9 @@ int shiftLeft(){
   return 1;
 }
 
+/*
+moves the cursor left, also scrolls text if at left edge
+ */
 int leftArr(int key){
   int x, y;
   getyx(stdscr, y, x);
@@ -305,6 +343,9 @@ int leftArr(int key){
   return 0;
 }
 
+/*
+moves the cursor right, also scrolls text if at right edge
+ */
 int rightArr(int key){
   int x, y;
   getyx(stdscr, y, x);
@@ -326,16 +367,26 @@ int rightArr(int key){
   return 0;
 }
 
+/*
+not assigned to functionality, beep at the user.
+ */
 int upArr(int key){
   beep();
   return 0;
 }
 
+/*
+  not assigned to functionality, beep at the user.
+ */
 int downArr(int key){
   beep();
   return 0;
 }
 
+/*
+  fill a rectangle to the screen of a certain character,
+  with whatever color is currently set.
+ */
 void blankInRect(int sx, int sy, int mx, int my, char c){
   int oldx, oldy;
   int x = sx, y = sy;
@@ -353,17 +404,25 @@ void blankInRect(int sx, int sy, int mx, int my, char c){
   move(oldy, oldx);
 }
 
-
+/*
+  fill a rectangle to the screen with a color and a character.
+ */
 void fillInRect(int sx, int sy, int mx, int my, char c, short color){
   attron(COLOR_PAIR(color));
   blankInRect(sx, sy, mx, my, c);
   attroff(COLOR_PAIR(color));
 }
 
+/*
+  draw the messages saved to the screen.
+ */
 void displayMessages(){
   drawQueueInRect(display_queue, 0, 0, MAX_X, MAX_Y - BOX_HEIGHT - 1);
 }
 
+/*
+  draw text in a rectangular area.
+ */
 void textInRect(char * str, int sx, int sy, int mx, int my){
   int oldx, oldy;
   int x = sx, y = sy;
@@ -385,6 +444,9 @@ void textInRect(char * str, int sx, int sy, int mx, int my){
   move(oldy, oldx);
 }
 
+/*
+  redraw the user input box.
+ */
 void redrawBox(){
   attron(COLOR_PAIR(colors_input));
   blankInRect(0, MAX_Y - BOX_HEIGHT, MAX_X, MAX_Y, ' ');
@@ -393,6 +455,9 @@ void redrawBox(){
   /*my_int(my_strlen(buffer));*/
 }
 
+/*
+  redraw the message area.
+ */
 void redrawScreen(){
   attron(COLOR_PAIR(colors_display));
   blankInRect(0, 0, MAX_X, MAX_Y - BOX_HEIGHT - 1, ' ');
@@ -400,12 +465,18 @@ void redrawScreen(){
   attroff(COLOR_PAIR(colors_display));
 }
 
+/*
+  redraw the whole client.
+ */
 void redraw(){
   writePrompt(0);
   redrawBox();
   redrawScreen();
 }
 
+/*
+  binding to resize the screen.
+ */
 int resize(int key){
   getmaxyx(stdscr, MAX_Y, MAX_X);
 
@@ -416,6 +487,9 @@ int resize(int key){
   return 0;
 }
 
+/*
+  draw the prompt to the screen
+ */
 int writePrompt(int key){
   char * text = PROMPT.message;
   int x = 0, y;
@@ -439,30 +513,52 @@ int writePrompt(int key){
   return 0;
 }
 
+/*
+  display a message on the prompt
+ */
 void PROMPT_DISPLAY(char * message){
   PROMPT.message = message;
   PROMPT.begin = message;
   writePrompt(0);  
 }
 
+/*
+  add a message segment to the queue.
+ */
 void pushMessage(MessageSegment * message){
   add_elem((void*)message, display_queue);
 }
 
+/*
+  creates a message segment, assuming text is a string
+  of length SEGMENT_SIZE - 1
+ */
 MessageSegment * newMessageSegment(int paginate, char * text){
   MessageSegment * message = (MessageSegment *)malloc(sizeof(MessageSegment));
+  if(text == NULL)
+    return message;
   message->paginate = paginate;
   my_strncpy(message->contents, text, SEGMENT_SIZE - 1);
   return message;
 }
 
+/*
+  Creates a new message segment with a specified length (seg).
+  seg must be smaller than SEGMENT_SIZE
+ */
 MessageSegment * newMessageSegment2(int paginate, char * text, int seg){
   MessageSegment * message = (MessageSegment *)malloc(sizeof(MessageSegment));
+  if(text == NULL || seg >= SEGMENT_SIZE)
+    return message;
   message->paginate = paginate;
   my_strncpy(message->contents, text, seg);
   return message;
 }
 
+/*
+  Splits a message up into segments of SEGMENT_SIZE.
+  Adds this message to those messages that should be displayed.
+ */
 void recieveMessage(char * text){
   int len = my_strlen(text);
   char * p;
@@ -476,6 +572,8 @@ void recieveMessage(char * text){
   len = moveBy - (text - p);
   if(len != 0)
     pushMessage(newMessageSegment2(paginate, text, len));
+  if(*display_tail == NULL)
+    *display_tail = last_node(*display_queue);
 }
 
 void * freeAThing(void * elem){
@@ -488,6 +586,8 @@ mapping chosen;
 
 int startup(){  
   int i;
+  display_queue = make_empty_list();
+  display_tail = make_empty_list();
   maxbuf = bufptr + BUFFERSIZE - 1;
   lastbuf = buffer + 1;
   firstbuf = buffer;
@@ -587,7 +687,9 @@ int closeUp(){
   /*noraw();*/
   endwin();
   static_map_list(*display_queue, freeAThing);
-  empty_list(display_queue);
+  free_list(display_queue);
+  *display_tail = NULL;
+  free(display_tail);
   return 0;
 }
 
